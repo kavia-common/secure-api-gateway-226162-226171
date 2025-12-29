@@ -28,6 +28,18 @@ Open:
 - Docs: http://localhost:8000/docs (endpoints under /v1.0)
 - Health: GET http://localhost:8000/v1.0/health
 
+## Run tests
+
+Tests are implemented with pytest and FastAPI TestClient. No real database is required; tests override DB dependencies and use an in-memory user store.
+
+- From this directory:
+  - make test
+  - or: pytest -q
+
+Environment:
+- Tests automatically set JWT_SECRET to a deterministic value if not provided.
+- No network access is required.
+
 ## Verify DB connectivity
 
 Ensure the database is reachable via `DATABASE_URL` or the db_connection.txt fallback. If using preview DB exposed at port 5001, set POSTGRES_PORT=5001 (or DB_FALLBACK_PORT_OVERRIDE=5001) in .env.
