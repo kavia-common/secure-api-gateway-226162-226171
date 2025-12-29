@@ -39,28 +39,44 @@ class Settings:
     cors_allow_headers: list[str] = None
 
     def _apply_port_override(self, url: str) -> str:
-        """Apply optional port override to a postgresql URL if DB_FALLBACK_PORT_OVERRIDE/POSTGRES_PORT is set."""
+        """Apply optional port override ONLY to postgres URLs when override env is set.
+
+        Guard: Modify URLs that start with 'postgres://' or 'postgresql://'. Return unchanged otherwise.
+        """
         try:
+            # Only consider override for Postgres URLs
+            if not (url.startswith("postgres://") or url.startswith("postgresql://")):
+                return url
+
             override = os.getenv("DB_FALLBACK_PORT_OVERRIDE") or os.getenv("POSTGRES_PORT")
             if not override:
                 return url
+
             port_int = int(override)
             parsed = urlparse(url)
-            # If netloc already contains port, replace; otherwise add
+
+            # Extract components safely
             hostname = parsed.hostname or ""
             username = parsed.username or ""
             password = parsed.password or ""
-            # Reconstruct netloc with possibly username/password
+            # Preserve IPv6 formatting and hostname casing as parsed provides lowercased hostnames.
+            # Reconstruct netloc with auth and override port
             auth = ""
             if username and password:
                 auth = f"{username}:{password}@"
             elif username:
                 auth = f"{username}@"
+
+            # If hostname was empty or parsing failed for some reason, just return original
+            if not hostname:
+                return url
+
             new_netloc = f"{auth}{hostname}:{port_int}"
+            # Preserve path, params, query, fragment
             rebuilt = parsed._replace(netloc=new_netloc)
             return urlunparse(rebuilt)
         except Exception:
-            # If anything goes wrong, return the original URL
+            # If anything goes wrong, return the original URL unchanged
             return url
 
     # PUBLIC_INTERFACE

@@ -7,10 +7,22 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-# Import the FastAPI app and dependencies
-from src.api.main import create_app
-from src.api import routes_v1
-from src.api.security import create_access_token
+# Ensure predictable env for test imports before importing application modules.
+# Keep this block immediately after imports to satisfy flake8 E402 expectations in this repo.
+if os.environ.get("PYTEST_ENV_SETUP", "0") != "1":
+    os.environ["PYTEST_ENV_SETUP"] = "1"
+    os.environ.setdefault("JWT_SECRET", "test-secret-key")
+    os.environ.setdefault("ACCESS_TOKEN_EXPIRES_MINUTES", "5")
+    os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    # Neutralize any port override that might corrupt non-Postgres URLs in tests
+    os.environ.pop("POSTGRES_PORT", None)
+    os.environ.pop("DB_FALLBACK_PORT_OVERRIDE", None)
+
+# Import the FastAPI app and dependencies AFTER env is set
+from src.api.main import create_app  # noqa: E402
+from src.api import routes_v1  # noqa: E402
+from src.api.security import create_access_token  # noqa: E402
+
 
 # ---- Test configuration and fixtures ----
 #
@@ -24,14 +36,7 @@ from src.api.security import create_access_token
 
 @pytest.fixture(scope="session", autouse=True)
 def _ensure_test_env():
-    # Ensure a deterministic JWT secret for tests
-    if not os.getenv("JWT_SECRET"):
-        os.environ["JWT_SECRET"] = "test-secret-key"
-    # Shorten token lifetime to speed up (but still valid for duration of tests)
-    os.environ.setdefault("ACCESS_TOKEN_EXPIRES_MINUTES", "5")
-    # Ensure no DATABASE_URL is required since we override DB dependencies
-    # Note: the database module raises if imported without DATABASE_URL. Tests import app via create_app,
-    # but routes_v1 imports database symbols. We'll override the DB-dependent callables in routes_v1.
+    # Env already set at import time above to avoid import-time failures.
     return
 
 
@@ -46,7 +51,7 @@ def seeded_user():
         created_at=datetime.now(timezone.utc),
         # password_hash is not strictly needed by tests because we override verify_password,
         # but include for completeness
-        password_hash="$2b$12$dummyhashfor-tests-not-used"
+        password_hash="$2b$12$dummyhashfor-tests-not-used",
     )
 
     # Provide the same interface method as the model for /me
