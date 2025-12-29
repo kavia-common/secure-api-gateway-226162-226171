@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Optional
+from urllib.parse import urlparse, urlunparse
 
 from dotenv import load_dotenv
 
@@ -15,7 +16,9 @@ class Settings:
 
     This centralizes all configuration values and provides safe defaults for development.
     DATABASE_URL is required for DB connectivity. If not present, we try to read it
-    from the sibling database container's db_connection.txt.
+    from the sibling database container's db_connection.txt. If the helper file points
+    to a local dev port (e.g., 5000) but a preview database runs on another port (e.g., 5001),
+    you can set DB_FALLBACK_PORT_OVERRIDE or POSTGRES_PORT to adjust dynamically.
     """
     app_title: str = "Secure API Gateway"
     app_description: str = (
@@ -34,6 +37,36 @@ class Settings:
     cors_allow_credentials: bool = True
     cors_allow_methods: list[str] = None
     cors_allow_headers: list[str] = None
+
+    def _apply_port_override(self, url: str) -> str:
+        """Apply optional port override to a postgresql URL if DB_FALLBACK_PORT_OVERRIDE/POSTGRES_PORT is set."""
+        try:
+            override = os.getenv("DB_FALLBACK_PORT_OVERRIDE") or os.getenv("POSTGRES_PORT")
+            if not override:
+                return url
+            port_int = int(override)
+            parsed = urlparse(url)
+            # If netloc already contains port, replace; otherwise add
+            hostname = parsed.hostname or ""
+            username = parsed.username or ""
+            password = parsed.password or ""
+            # Reconstruct netloc with possibly username/password
+            auth = ""
+            if username and password:
+                auth = f"{username}:{password}@"
+            elif username:
+                auth = f"{username}@"
+            new_netloc = f"{auth}{hostname}:{port_int}"
+            rebuilt = parsed._replace(netloc=new_netloc)
+            return urlunparse(rebuilt)
+        except Exception:
+            # If anything goes wrong, return the original URL
+            return url
+
+    # PUBLIC_INTERFACE
+    def access_token_expires_delta(self) -> timedelta:
+        """Return a timedelta representing the access token expiration interval."""
+        return timedelta(minutes=self.access_token_expires_minutes)
 
     def __post_init__(self):
         # Set permissive CORS defaults for development
@@ -60,15 +93,14 @@ class Settings:
                     if content.startswith("psql "):
                         content = content[len("psql "):]
                     if content.startswith("postgres://") or content.startswith("postgresql://"):
-                        self.database_url = content
+                        self.database_url = self._apply_port_override(content)
             except FileNotFoundError:
                 # Leave as None; app will raise a clear error at startup if needed
                 pass
 
-    # PUBLIC_INTERFACE
-    def access_token_expires_delta(self) -> timedelta:
-        """Return a timedelta representing the access token expiration interval."""
-        return timedelta(minutes=self.access_token_expires_minutes)
+        # If database_url came from env directly, still allow port override for preview convenience
+        if self.database_url:
+            self.database_url = self._apply_port_override(self.database_url)
 
 
 settings = Settings()
