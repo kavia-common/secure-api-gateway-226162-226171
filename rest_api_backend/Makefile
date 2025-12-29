@@ -1,7 +1,9 @@
 .PHONY: test lint
 
+# Run pytest quietly
 test:
-\tpytest -q
+	pytest -q
 
+# Lint only project code (src and tests), using .flake8 configuration
 lint:
-\tflake8 src
+	flake8 src tests

@@ -6,8 +6,10 @@ from passlib.context import CryptContext
 
 from .config import settings
 
+
 # Configure bcrypt via passlib
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 # PUBLIC_INTERFACE
 def verify_password(plain_password: str, password_hash: str) -> bool:

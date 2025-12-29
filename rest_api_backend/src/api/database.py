@@ -32,15 +32,28 @@ class User(Base):
 
     username = Column(String, primary_key=True, index=True)
     password_hash = Column(String, nullable=False)
-    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    updated_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
 
     # PUBLIC_INTERFACE
     def to_profile_dict(self) -> dict:
         """Return a dictionary suitable for the /me endpoint."""
+        created_at_val = (
+            self.created_at.isoformat()
+            if isinstance(self.created_at, datetime) and self.created_at
+            else None
+        )
         return {
             "username": self.username,
-            "created_at": self.created_at.isoformat() if isinstance(self.created_at, datetime) and self.created_at else None,
+            "created_at": created_at_val,
         }
 
 

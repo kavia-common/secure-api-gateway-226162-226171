@@ -1,7 +1,11 @@
 [flake8]
-exclude = .git,__pycache__,build,dist,venv
-select = E9,F
+# Only lint our source and tests, exclude third-party packages inside virtualenvs
+exclude = .venv,venv,env,__pycache__,.git
 max-line-length = 120
+extend-ignore =
+    # Allow unused imports/vars in 3rd party, but we're excluding .venv anyway.
+    # Keep this list minimal; project code should remain clean.
+    E203
 per-file-ignores =
-    __init__.py:F401
-max-complexity = 18
+    # Allow conftest/test files to have unused imports or variables occasionally
+    tests/*: F401,F841
