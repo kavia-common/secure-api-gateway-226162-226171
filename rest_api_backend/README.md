@@ -53,6 +53,29 @@ curl -s http://localhost:8000/v1.0/me -H "Authorization: Bearer $TOKEN"
 Expected response:
 { "username": "testuser", "created_at": "..." }
 
+## Auth flow script
+
+A helper script is available to automate the complete auth flow (health check, token retrieval, and protected endpoint call).
+
+- Location: scripts/auth_flow.sh (relative to repository root)
+- Prerequisites: curl, jq
+- Defaults:
+  - BASE_URL=http://localhost:8000
+  - USERNAME=testuser
+  - PASSWORD=testpass
+
+Usage:
+- Run with defaults:
+  scripts/auth_flow.sh
+
+- Override environment variables:
+  BASE_URL=http://localhost:3001 USERNAME=alice PASSWORD='s3cr3t' scripts/auth_flow.sh
+
+What it does:
+1) GET ${BASE_URL}/v1.0/health
+2) POST ${BASE_URL}/v1.0/get_token
+3) GET ${BASE_URL}/v1.0/me
+
 ## OpenAPI
 
 - /docs should show the versioned endpoints under /v1.0.
